@@ -291,6 +291,10 @@ case "$DEVICE" in
     check_os_release "x86" "$VERSION" "$DEVICE"
     sh scripts/x86image.sh -v "$VERSION" -p "$PATCH";
     ;;
+  nanopineo2) echo 'Writing NanoPi-NEO2 Image File'
+    check_os_release "armv7" "$VERSION" "$DEVICE"
+    sh scripts/nanopineo2image.sh -v "$VERSION" -p "$PATCH" -a armv7
+    ;;
 esac
 
 #When the tar is created we can build the docker layer
