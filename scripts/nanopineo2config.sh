@@ -16,6 +16,21 @@ tmpfs   /tmp                    tmpfs   defaults,noatime,mode=0755 0 0
 tmpfs   /dev/shm                tmpfs   defaults,nosuid,noexec,nodev        0 0
 " > /etc/fstab
 
+ARCH=$(cat /etc/os-release | grep ^VOLUMIO_ARCH | tr -d 'VOLUMIO_ARCH="')
+echo $ARCH
+
+if [ $ARCH = armv7 ]; then
+  echo "Armv7 Environment detected"
+  echo "#!/bin/sh
+sysctl abi.cp15_barrier=2
+" > /usr/local/bin/nanopineo2-init.sh
+  chmod +x /usr/local/bin/nanopineo2-init.sh
+
+  echo "#!/bin/sh -e
+  /usr/local/bin/nanopineo2-init.sh
+  exit 0" > /etc/rc.local
+fi
+
 #echo "Adding default sound modules and wifi"
 #echo "sunxi_codec
 #sunxi_i2s

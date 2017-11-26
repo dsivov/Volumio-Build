@@ -122,9 +122,9 @@ sudo cp -pdR platform-nanopineo2/nanopineo2/lib/firmware /mnt/volumio/rootfs/lib
 echo "Confguring ALSA with sane defaults"
 #sudo cp platform-nanopineo2/nanopineo2/var/lib/alsa/* /mnt/volumio/rootfs/var/lib/alsa
 
-echo "Replace node.js and modules"
-sudo tar -zxf platform-nanopineo2/nanopineo2/nodejs/node-v6.11.0-linux-armv7.tar.gz -C /mnt/volumio/rootfs/
-sudo tar -zxf platform-nanopineo2/nanopineo2/nodejs/node_modules_arm-6.11.0-armv7.tar.gz -C /mnt/volumio/rootfs/volumio
+#echo "Replace node.js and modules"
+#sudo tar -zxf platform-nanopineo2/nanopineo2/nodejs/node-v6.11.0-linux-armv7.tar.gz -C /mnt/volumio/rootfs/
+#sudo tar -zxf platform-nanopineo2/nanopineo2/nodejs/node_modules_arm-6.11.0-armv7.tar.gz -C /mnt/volumio/rootfs/volumio
 
 sync
 
