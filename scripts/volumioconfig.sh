@@ -362,6 +362,7 @@ if [ 1 = 2 ]; then
   dpkg -i volumio-remote-updater_1.2-armv7.deb
   rm volumio-remote-updater_1.2-armv7.deb
 fi
+  cd /
   #Remove autostart of upmpdcli
   update-rc.d upmpdcli remove
 

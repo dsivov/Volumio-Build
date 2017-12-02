@@ -297,7 +297,11 @@ case "$DEVICE" in
     check_os_release "x86" "$VERSION" "$DEVICE"
     sh scripts/x86image.sh -v "$VERSION" -p "$PATCH";
     ;;
-  nanopineo2) echo 'Writing NanoPi-NEO2 Image File'
+  nanopineo2) echo 'Writing NanoPi-NEO2 armv7 Image File'
+    check_os_release "armv7" "$VERSION" "$DEVICE"
+    sh scripts/nanopineo2armv7image.sh -v "$VERSION" -p "$PATCH" -a armv7
+    ;;
+  nanopineo2-armv8) echo 'Writing NanoPi-NEO2 armv8 Image File'
     check_os_release "armv8" "$VERSION" "$DEVICE"
     sh scripts/nanopineo2image.sh -v "$VERSION" -p "$PATCH" -a armv8
     ;;
