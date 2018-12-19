@@ -280,6 +280,15 @@ rm rpi-volumio-"$KERNEL_VERSION"-taudac-modules.tar.gz
 echo "TauDAC Modules and overlay installed"
 
 
+echo "Getting DDPLAYER Modules and overlay"
+wget https://github.com/dsivov/DDPlayerDrivers/raw/master/ddplayer-driver.tar.gz 
+echo "Extracting DDPLAYER Modules and overlay"
+tar --strip-components 1 --exclude *.hash -xf ddplayer-driver.tar.gz
+
+rm ddplayer-driver.tar.gz
+echo "DDPLAYER Modules and overlay installed"
+
+
 if [ "$KERNEL_VERSION" = "4.4.9" ]; then
 
 ### Allo I2S Modules
