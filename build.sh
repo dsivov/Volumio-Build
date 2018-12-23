@@ -158,7 +158,7 @@ if [ -n "$BUILD" ]; then
   mkdir "build/$BUILD/root/volumio"
   if [ -n "$PATCH" ]; then
   echo "Cloning Volumio with all its history"
-  git clone https://github.com/volumio/Volumio2.git build/$BUILD/root/volumio
+  git clone https://github.com/dsivov/Volumio2.git build/$BUILD/root/volumio
   else 
   git clone --depth 1 -b master --single-branch https://github.com/dsivov/Volumio2.git build/$BUILD/root/volumio
   fi
@@ -172,9 +172,10 @@ if [ -n "$BUILD" ]; then
     echo "VOLUMIO_ARCH=\"${BUILD}\""
   } >> "build/$BUILD/root/etc/os-release"
   rm -rf build/$BUILD/root/volumio/http/www/.git
+  echo "root:x:0:0:root:/root:/bin/bash" > build/$BUILD/root/etc/passwd
   if [ ! "$BUILD" = x86 ]; then
     chroot "build/$BUILD/root" /bin/bash -x <<'EOF'
-su -
+su - root
 ./volumioconfig.sh
 EOF
   else
