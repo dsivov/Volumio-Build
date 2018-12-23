@@ -66,7 +66,7 @@ then
     # if you really want to re-clone from the repo, then delete the platforms-udoo folder
 else
 	echo "Clone all cubox files from repo"
-	git clone https://github.com/volumio/platform-udoo.git platform-udoo
+	git clone --depth 1 https://github.com/volumio/platform-udoo.git platform-udoo
 	echo "Unpack the cubox platform files"
     cd platform-udoo
 	tar xfJ udoo-qdl.tar.xz
@@ -142,6 +142,9 @@ echo "==> udoo-qdl device installed"
 #echo "(you can keep it safely as long as you're sure of no changes)"
 #sudo rm -r platforms-udoo
 sync
+
+echo "Finalizing Rootfs creation"
+sh scripts/finalize.sh
 
 echo "Preparing rootfs base for SquashFS"
 

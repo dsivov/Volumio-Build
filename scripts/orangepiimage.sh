@@ -3,22 +3,24 @@
 # Default build for Debian 32bit
 ARCH="armv7"
 
-while getopts ":v:p:a:" opt; do
+while getopts ":d:v:p:" opt; do
   case $opt in
+    d)
+      DEVICE=$OPTARG
+      ;;
     v)
       VERSION=$OPTARG
       ;;
     p)
       PATCH=$OPTARG
       ;;
-    a)
-      ARCH=$OPTARG
-      ;;
+
   esac
 done
 
 BUILDDATE=$(date -I)
-IMG_FILE="Volumio${VERSION}-${BUILDDATE}-cuboxi.img"
+IMG_FILE="Volumio${VERSION}-${BUILDDATE}-${DEVICE}.img"
+
 if [ "$ARCH" = arm ]; then
   DISTRO="Raspbian"
 else
@@ -30,7 +32,7 @@ dd if=/dev/zero of=${IMG_FILE} bs=1M count=2800
 
 echo "Creating Image Bed"
 LOOP_DEV=`sudo losetup -f --show ${IMG_FILE}`
-
+# Note: leave the first 20Mb free for the firmware
 parted -s "${LOOP_DEV}" mklabel msdos
 parted -s "${LOOP_DEV}" mkpart primary fat32 1 64
 parted -s "${LOOP_DEV}" mkpart primary ext3 65 2500
@@ -58,25 +60,21 @@ mkfs -F -t ext4 -L volumio "${SYS_PART}"
 mkfs -F -t ext4 -L volumio_data "${DATA_PART}"
 sync
 
-echo "Preparing for the cubox kernel/ platform files"
-if [ -d platform-cuboxi ]
+echo "Preparing for the OrangePi kernel/platform files"
+if [ -d platform-orangepi ]
 then
 	echo "Platform folder already exists - keeping it"
-    # if you really want to re-clone from the repo, then delete the platforms-cuboxi folder
 else
-	echo "Clone all cubox files from repo"
-	git clone --depth 1 https://github.com/volumio/platform-cuboxi.git platform-cuboxi
-	echo "Unpack the cubox platform files"
-    cd platform-cuboxi
-	tar xfJ cuboxi.tar.xz
+	echo "Clone all OrangePi files from repo"
+	git clone https://github.com/volumio/platform-orangepi.git platform-orangepi
+	echo "Unpack the OrangePi platform files"
+	cd platform-orangepi
+	tar xfJ "${DEVICE}.tar.xz"
 	cd ..
 fi
 
-#TODO: Check!!!!
-echo "Copying the bootloader"
-echo "Burning bootloader"
-dd if=platform-cuboxi/cuboxi/uboot/SPL of=${LOOP_DEV} bs=1K seek=1
-dd if=platform-cuboxi/cuboxi/uboot/u-boot.img of=${LOOP_DEV} bs=1K seek=42
+echo "Burning the bootloader and u-boot"
+dd if=platform-orangepi/${DEVICE}/u-boot/u-boot-sunxi-with-spl.bin of=${LOOP_DEV} bs=1024 seek=8 conv=notrunc
 sync
 
 echo "Preparing for Volumio rootfs"
@@ -92,39 +90,28 @@ then
 	rm -rf /mnt/volumio/*
 else
 	echo "Creating Volumio Temp Directory"
-	mkdir /mnt/volumio
+	sudo mkdir /mnt/volumio
 fi
 
 echo "Creating mount point for the images partition"
 mkdir /mnt/volumio/images
 mount -t ext4 "${SYS_PART}" /mnt/volumio/images
 mkdir /mnt/volumio/rootfs
+echo "Creating mount point for the boot partition"
 mkdir /mnt/volumio/rootfs/boot
 mount -t vfat "${BOOT_PART}" /mnt/volumio/rootfs/boot
 
 echo "Copying Volumio RootFs"
-cp -pdR build/$ARCH/root/* /mnt/volumio/rootfs
-echo "Copying cuboxi boot files, Kernel, Modules and Firmware"
-cp platform-cuboxi/cuboxi/boot/* /mnt/volumio/rootfs/boot
-cp -pdR platform-cuboxi/cuboxi/lib/modules /mnt/volumio/rootfs/lib
-cp -pdR platform-cuboxi/cuboxi/lib/firmware /mnt/volumio/rootfs/lib
-tar cfJ /mnt/volumio/rootfs/usr/linux-headers.tar.xz platform-cuboxi/cuboxi/usr/include 
+cp -pdR build/armv7/root/* /mnt/volumio/rootfs
 
-cp platform-cuboxi/cuboxi/nvram-fw/brcmfmac4329-sdio.txt /mnt/volumio/rootfs/lib/firmware/brcm/
-cp platform-cuboxi/cuboxi/nvram-fw/brcmfmac4330-sdio.txt /mnt/volumio/rootfs/lib/firmware/brcm/
+echo "Copying OrangePi boot files, kernel, modules and firmware"
+cp -dR platform-orangepi/${DEVICE}/boot /mnt/volumio/rootfs
+cp -pdR platform-orangepi/${DEVICE}/lib/modules /mnt/volumio/rootfs/lib
+cp -pdR platform-orangepi/${DEVICE}/lib/firmware /mnt/volumio/rootfs/lib
 
-cp -pdR platform-cuboxi/cuboxi/usr/share/alsa/cards/imx-hdmi-soc.conf /mnt/volumio/rootfs/usr/share/alsa/cards
-cp -pdR platform-cuboxi/cuboxi/usr/share/alsa/cards/imx-spdif.conf /mnt/volumio/rootfs/usr/share/alsa/cards
-cp -pdR platform-cuboxi/cuboxi/usr/share/alsa/cards/aliases.conf /mnt/volumio/rootfs/usr/share/alsa/cards
-chown root:root /mnt/volumio/rootfs/usr/share/alsa/cards/imx-hdmi-soc.conf
-chown root:root /mnt/volumio/rootfs/usr/share/alsa/cards/imx-spdif.conf
-chown root:root /mnt/volumio/rootfs/usr/share/alsa/cards/aliases.conf
-
-sync
-
-echo "Preparing to run chroot for more cuboxi configuration"
-cp scripts/cuboxiconfig.sh /mnt/volumio/rootfs
-cp scripts/initramfs/init /mnt/volumio/rootfs/root
+echo "Preparing to run chroot for more OrangePi configuration"
+cp scripts/orangepiconfig.sh /mnt/volumio/rootfs
+cp scripts/initramfs/init.nextarm /mnt/volumio/rootfs/root/init
 cp scripts/initramfs/mkinitramfs-custom.sh /mnt/volumio/rootfs/usr/local/sbin
 #copy the scripts for updating from usb
 wget -P /mnt/volumio/rootfs/root http://repo.volumio.org/Volumio2/Binaries/volumio-init-updater
@@ -133,24 +120,28 @@ mount /dev /mnt/volumio/rootfs/dev -o bind
 mount /proc /mnt/volumio/rootfs/proc -t proc
 mount /sys /mnt/volumio/rootfs/sys -t sysfs
 echo $PATCH > /mnt/volumio/rootfs/patch
+
 chroot /mnt/volumio/rootfs /bin/bash -x <<'EOF'
 su -
-/cuboxiconfig.sh
+/orangepiconfig.sh
 EOF
 
 #cleanup
-rm /mnt/volumio/rootfs/cuboxiconfig.sh /mnt/volumio/rootfs/root/init
+rm /mnt/volumio/rootfs/orangepiconfig.sh /mnt/volumio/rootfs/root/init
 
 echo "Unmounting Temp devices"
 umount -l /mnt/volumio/rootfs/dev
 umount -l /mnt/volumio/rootfs/proc
 umount -l /mnt/volumio/rootfs/sys
 
-echo "==> cuboxi device installed"
+#echo "Copying LIRC configuration files"
+
+
+echo "==> OrangePi device installed"
 
 #echo "Removing temporary platform files"
 #echo "(you can keep it safely as long as you're sure of no changes)"
-#sudo rm -r platforms-cuboxi
+#rm -r platform-orangepi
 sync
 
 echo "Finalizing Rootfs creation"
@@ -175,7 +166,7 @@ if [ -e /mnt/kernel_current.tar ]; then
 fi
 
 echo "Creating Kernel Partition Archive"
-tar cf /mnt/kernel_current.tar --exclude='resize-volumio-datapart' -C /mnt/squash/boot/ .
+tar cf /mnt/kernel_current.tar  -C /mnt/squash/boot/ .
 
 echo "Removing the Kernel"
 rm -rf /mnt/squash/boot/*
@@ -198,3 +189,5 @@ umount -l /mnt/volumio/rootfs/boot
 dmsetup remove_all
 losetup -d ${LOOP_DEV}
 sync
+
+md5sum "$IMG_FILE" > "${IMG_FILE}.md5"

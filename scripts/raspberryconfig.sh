@@ -37,12 +37,20 @@ options snd-usb-audio index=5
 options snd_bcm2835 index=0" >> /etc/modprobe.d/alsa-base.conf
 
 echo "Adding Raspberrypi.org Repo"
-echo "deb http://archive.raspberrypi.org/debian/ jessie main ui
-deb-src http://archive.raspberrypi.org/debian/ jessie main ui
+echo "deb http://archive.volumio.org/debian/ jessie main ui
+deb-src http://archive.volumio.org/debian/ jessie main ui
 " >> /etc/apt/sources.list.d/raspi.list
 
-echo "Adding Raspberrypi.org Repo Key"
-wget http://archive.raspberrypi.org/debian/raspberrypi.gpg.key -O - | sudo apt-key add -
+
+echo "Adding archive.volumio.org PGP Keys"
+curl -s http://archive.volumio.org/debian/raspberrypi.gpg.key | sudo apt-key add -
+curl -s http://archive.volumio.org/raspbian/raspbian.public.key | sudo apt-key add -
+
+#echo "Adding Raspberrypi.org Repo Key"
+#wget http://archive.raspberrypi.org/debian/raspberrypi.gpg.key -O - | sudo apt-key add -
+#echo "TEMP FIX FOR APT MIRROR"
+#echo "APT::Get::AllowUnauthenticated "true";" > /etc/apt/apt.conf.d/98tempfix
+
 
 echo "Installing R-pi specific binaries"
 apt-get update
@@ -55,7 +63,8 @@ sudo curl -L --output /usr/bin/rpi-update https://raw.githubusercontent.com/Hexx
 touch /boot/start.elf
 mkdir /lib/modules
 
-KERNEL_VERSION="4.9.65"
+
+KERNEL_VERSION="4.14.71"
 
 case $KERNEL_VERSION in
     "4.4.9")
@@ -68,6 +77,31 @@ case $KERNEL_VERSION in
       KERNEL_COMMIT="e4b56bb7efe47319e9478cfc577647e51c48e909"
       FIRMWARE_COMMIT=$KERNEL_COMMIT
       ;; 
+    "4.9.80")
+      KERNEL_REV="1098"
+      KERNEL_COMMIT="936a8dc3a605c20058fbb23672d6b47bca77b0d5"
+      FIRMWARE_COMMIT=$KERNEL_COMMIT
+      ;;
+    "4.14.42")
+      KERNEL_REV="1114"
+      KERNEL_COMMIT="d68045945570b418ac48830374366613de3278f3"
+      FIRMWARE_COMMIT=$KERNEL_COMMIT
+      ;;
+    "4.14.56")
+      KERNEL_REV="1128"
+      KERNEL_COMMIT="d985893ae67195d0cce632efe4437e5fcde4b64b"
+      FIRMWARE_COMMIT=$KERNEL_COMMIT
+      ;;
+    "4.14.62")
+      KERNEL_REV="1134"
+      KERNEL_COMMIT="911147a3276beee09afc4237e1b7b964e61fb88a"
+      FIRMWARE_COMMIT=$KERNEL_COMMIT
+      ;;
+    "4.14.71")
+      KERNEL_REV="1145"
+      KERNEL_COMMIT="c919d632ddc2a88bcb87b7d0cddd61446d1a36bf"
+      FIRMWARE_COMMIT=$KERNEL_COMMIT
+      ;;
 esac
 
 # using rpi-update relevant to defined kernel version
@@ -94,6 +128,11 @@ apt-mark hold raspberrypi-kernel raspberrypi-bootloader   #libraspberrypi0 depen
 echo "Adding PI3 & PiZero W Wireless, PI WIFI Wireless dongle, ralink mt7601u & few others firmware upgraging to Pi Foundations packages"
 apt-get install -y --only-upgrade firmware-atheros firmware-ralink firmware-realtek firmware-brcm80211
 
+# Temporary brcm firmware fix solution until we use Stretch
+wget http://repo.volumio.org/Volumio2/Firmwares/firmware-brcm80211_20161130-3+rpt4_all.deb
+dpkg -i firmware-brcm80211_20161130-3+rpt4_all.deb
+rm firmware-brcm80211_20161130-3+rpt4_all.deb
+
 if [ "$KERNEL_VERSION" = "4.4.9" ]; then       # probably won't be necessary in future kernels 
 echo "Adding initial support for PiZero W wireless on 4.4.9 kernel"
 wget -P /boot/. https://github.com/Hexxeh/rpi-firmware/raw/$FIRMWARE_COMMIT/bcm2708-rpi-0-w.dtb
@@ -118,7 +157,7 @@ apt-get -y remove binutils
 
 echo "Writing config.txt file"
 echo "initramfs volumio.initrd
-gpu_mem=16
+gpu_mem=32
 max_usb_current=1
 dtparam=audio=on
 audio_pwm_mode=2
@@ -169,69 +208,32 @@ ln -s /opt/vc/lib/libvchiq_arm.so /usr/lib/libvchiq_arm.so
 ln -s /opt/vc/bin/vcgencmd /usr/bin/vcgencmd
 ln -s /opt/vc/lib/libvcos.so /usr/lib/libvcos.so
 
-# changing external ethX priority rule for Pi as built-in eth _is_ on USB (smsc95xx driver)
-sed -i 's/KERNEL==\"eth/DRIVERS!=\"smsc95xx\", &/' /etc/udev/rules.d/99-Volumio-net.rules
+# changing external ethX priority rule for Pi as built-in eth _is_ on USB (smsc95xx or lan78xx drivers)
+sed -i 's/KERNEL==\"eth/DRIVERS!=\"smsc95xx\", DRIVERS!=\"lan78xx\", &/' /etc/udev/rules.d/99-Volumio-net.rules
 
-echo "Installing Wireless drivers for 8192eu, 8812au, 8188eu and mt7610. Many thanks mrengman"
-MRENGMAN_REPO="http://www.fars-robotics.net"
+echo "Installing Wireless drivers for 8188eu, 8192eu, 8812au, mt7610, and mt7612. Many thanks MrEngman"
+### We cache the drivers archives upon first request on Volumio server, to relieve stress on mr engmans
+MRENGMAN_REPO="http://wifi-drivers.volumio.org/wifi-drivers"
+#MRENGMAN_REPO="http://downloads.fars-robotics.net/wifi-drivers"
 mkdir wifi
 cd wifi
 
-echo "WIFI: 8192EU for armv7"
-wget $MRENGMAN_REPO/8192eu-$KERNEL_VERSION-v7-$KERNEL_REV.tar.gz
-tar xf 8192eu-$KERNEL_VERSION-v7-$KERNEL_REV.tar.gz
-sed -i 's/^kernel=.*$/kernel='"$KERNEL_VERSION"'-v7+/' install.sh
-sh install.sh
-rm -rf *
+for DRIVER in 8188eu 8192eu 8812au mt7610 mt7612
+do
+  echo "WIFI: $DRIVER for armv7"
+  wget $MRENGMAN_REPO/$DRIVER-drivers/$DRIVER-$KERNEL_VERSION-v7-$KERNEL_REV.tar.gz
+  tar xf $DRIVER-$KERNEL_VERSION-v7-$KERNEL_REV.tar.gz
+  sed -i 's/^kernel=.*$/kernel='"$KERNEL_VERSION"'-v7+/' install.sh
+  sh install.sh
+  rm -rf *
 
-echo "WIFI: 8192EU for armv6"
-wget $MRENGMAN_REPO/8192eu-$KERNEL_VERSION-$KERNEL_REV.tar.gz
-tar xf 8192eu-$KERNEL_VERSION-$KERNEL_REV.tar.gz
-sed -i 's/^kernel=.*$/kernel='"$KERNEL_VERSION"'+/' install.sh
-sh install.sh
-rm -rf *
-
-echo "WIFI: 8812AU for armv7"
-wget $MRENGMAN_REPO/8812au-$KERNEL_VERSION-v7-$KERNEL_REV.tar.gz
-tar xf 8812au-$KERNEL_VERSION-v7-$KERNEL_REV.tar.gz
-sed -i 's/^kernel=.*$/kernel='"$KERNEL_VERSION"'-v7+/' install.sh
-sh install.sh
-rm -rf *
-
-echo "WIFI: 8812AU for armv6"
-wget $MRENGMAN_REPO/8812au-$KERNEL_VERSION-$KERNEL_REV.tar.gz
-tar xf 8812au-$KERNEL_VERSION-$KERNEL_REV.tar.gz
-sed -i 's/^kernel=.*$/kernel='"$KERNEL_VERSION"'+/' install.sh
-sh install.sh
-rm -rf *
-
-echo "WIFI: 8188EU for armv7"
-wget $MRENGMAN_REPO/8188eu-$KERNEL_VERSION-v7-$KERNEL_REV.tar.gz
-tar xf 8188eu-$KERNEL_VERSION-v7-$KERNEL_REV.tar.gz
-sed -i 's/^kernel=.*$/kernel='"$KERNEL_VERSION"'-v7+/' install.sh
-sh install.sh
-rm -rf *
-
-echo "WIFI: 8188EU for armv6"
-wget $MRENGMAN_REPO/8188eu-$KERNEL_VERSION-$KERNEL_REV.tar.gz
-tar xf 8188eu-$KERNEL_VERSION-$KERNEL_REV.tar.gz
-sed -i 's/^kernel=.*$/kernel='"$KERNEL_VERSION"'+/' install.sh
-sh install.sh
-rm -rf *
-
-echo "WIFI: MT7610 for armv7"
-wget $MRENGMAN_REPO/mt7610-$KERNEL_VERSION-v7-$KERNEL_REV.tar.gz
-tar xf mt7610-$KERNEL_VERSION-v7-$KERNEL_REV.tar.gz
-sed -i 's/^kernel=.*$/kernel='"$KERNEL_VERSION"'-v7+/' install.sh
-sh install.sh
-rm -rf *
-
-echo "WIFI: MT7610 for armv6"
-wget $MRENGMAN_REPO/mt7610-$KERNEL_VERSION-$KERNEL_REV.tar.gz
-tar xf mt7610-$KERNEL_VERSION-$KERNEL_REV.tar.gz
-sed -i 's/^kernel=.*$/kernel='"$KERNEL_VERSION"'+/' install.sh
-sh install.sh
-rm -rf *
+  echo "WIFI: $DRIVER for armv6"
+  wget $MRENGMAN_REPO/$DRIVER-drivers/$DRIVER-$KERNEL_VERSION-$KERNEL_REV.tar.gz
+  tar xf $DRIVER-$KERNEL_VERSION-$KERNEL_REV.tar.gz
+  sed -i 's/^kernel=.*$/kernel='"$KERNEL_VERSION"'+/' install.sh
+  sh install.sh
+  rm -rf *
+done
 
 cd ..
 rm -rf wifi
@@ -278,6 +280,11 @@ echo "Extracting TauDAC Modules and overlay"
 tar --strip-components 1 --exclude *.hash -xf rpi-volumio-"$KERNEL_VERSION"-taudac-modules.tar.gz
 rm rpi-volumio-"$KERNEL_VERSION"-taudac-modules.tar.gz
 echo "TauDAC Modules and overlay installed"
+
+echo "Getting Volumio driver"
+wget http://repo.volumio.org/Volumio2/Firmwares/ess-volumio/ess-volumio-$KERNEL_VERSION-v7+.tar.gz
+tar xf ess-volumio-$KERNEL_VERSION-v7+.tar.gz --no-same-owner
+rm ess-volumio-$KERNEL_VERSION-v7+.tar.gz
 
 
 echo "Getting DDPLAYER Modules and overlay"

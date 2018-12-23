@@ -61,7 +61,7 @@ then
     # that will refresh all the pv platforms, see below
 else
 	echo "Clone Polyvection files from repo"
-	git clone https://github.com/volumio/platform-pv.git platform-pv
+	git clone --depth 1 https://github.com/volumio/platform-pv.git platform-pv
 	echo "Unpack the Voltastream Zero platform files"
 	cd platform-pv
 	tar xfJ vszero.tar.xz
@@ -69,7 +69,7 @@ else
 fi
 
 echo "Copying the bootloader"
-dd if=platform-pv/vszero/u-boot/u-boot-dtb.imx of=${LOOP_DEV} seek=1 bs=1k conv=notrunc
+dd if=platform-pv/vszero/u-boot/u-boot-dtb.imx-512Mb of=${LOOP_DEV} seek=1 bs=1k conv=notrunc
 sync
 
 if [ -d /mnt ]
@@ -119,7 +119,21 @@ wget -P /mnt/volumio/rootfs/root http://repo.volumio.org/Volumio2/Binaries/volum
 mount /dev /mnt/volumio/rootfs/dev -o bind
 mount /proc /mnt/volumio/rootfs/proc -t proc
 mount /sys /mnt/volumio/rootfs/sys -t sysfs
+
 echo $PATCH > /mnt/volumio/rootfs/patch
+
+if [ -f "/mnt/volumio/rootfs/$PATCH/patch.sh" ] && [ -f "config.js" ]; then
+        if [ -f "UIVARIANT" ] && [ -f "variant.js" ]; then
+                UIVARIANT=$(cat "UIVARIANT")
+                echo "Configuring variant $UIVARIANT"
+                echo "Starting config.js for variant $UIVARIANT"
+                node config.js $PATCH $UIVARIANT
+                echo $UIVARIANT > /mnt/volumio/rootfs/UIVARIANT
+        else
+                echo "Starting config.js"
+                node config.js $PATCH
+        fi
+fi
 
 chroot /mnt/volumio/rootfs /bin/bash -x <<'EOF'
 su -
@@ -137,6 +151,9 @@ umount -l /mnt/volumio/rootfs/sys
 echo "==> Voltastream Zero device installed"
 
 sync
+
+echo "Finalizing Rootfs creation"
+sh scripts/finalize.sh
 
 echo "Preparing rootfs base for SquashFS"
 

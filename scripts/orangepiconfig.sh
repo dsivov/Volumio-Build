@@ -5,7 +5,7 @@ PATCH=$(cat /patch)
 # This script will be run in chroot under qemu.
 
 echo "Creating \"fstab\""
-echo "# NanoPi-NEO fstab" > /etc/fstab
+echo "# OrangePi fstab" > /etc/fstab
 echo "" >> /etc/fstab
 echo "proc            /proc           proc    defaults        0       0
 /dev/mmcblk0p1  /boot           vfat    defaults,utf8,user,rw,umask=111,dmask=000        0       1
@@ -24,23 +24,17 @@ tmpfs   /dev/shm                tmpfs   defaults,nosuid,noexec,nodev        0 0
 #" >> /etc/modules
 
 #echo "Blacklisting 8723bs_vq0"
-#echo "blacklist 8723bs_vq0" >> /etc/modprobe.d/blacklist-nanopineo2.conf
+#echo "blacklist 8723bs_vq0" >> /etc/modprobe.d/blacklist-pine64.conf
 
-echo "USB Card Ordering"
-echo "# USB DACs will have device number 5 in whole Volumio device range
-options snd-usb-audio index=5" >> /etc/modprobe.d/alsa-base.conf
-
+apt-get update
+apt-get -y install u-boot-tools liblircclient0 lirc aptitude bc
 
 echo "Installing additonal packages"
-apt-get update
-apt-get -y install network-manager u-boot-tools liblircclient0 lirc
+apt-get install -qq -y dialog debconf-utils lsb-release aptitude
 
-echo "Cleaning APT Cache and remove policy file"
-rm -f /var/lib/apt/lists/*archive*
-apt-get clean
-
-echo "Adding custom modules overlay, squashfs and nls_cp437"
+echo "Adding custom modules overlayfs, squashfs and nls_cp437"
 echo "overlay" >> /etc/initramfs-tools/modules
+echo "overlayfs" >> /etc/initramfs-tools/modules
 echo "squashfs" >> /etc/initramfs-tools/modules
 echo "nls_cp437" >> /etc/initramfs-tools/modules
 
@@ -66,13 +60,18 @@ rm -rf ${PATCH}
 fi
 rm /patch
 
-#echo "Changing to 'modules=dep'"
-#echo "(otherwise NanoPi-NEO won't boot due to uInitrd 4MB limit)"
-#sed -i "s/MODULES=most/MODULES=dep/g" /etc/initramfs-tools/initramfs.conf
-
 echo "Installing winbind here, since it freezes networking"
 apt-get update
 apt-get install -y winbind libnss-winbind
+
+echo "adding gpio group and udev rules"
+groupadd -f --system gpio
+usermod -aG gpio volumio
+touch /etc/udev/rules.d/99-gpio.rules
+echo "SUBSYSTEM==\"gpio\", ACTION==\"add\", RUN=\"/bin/sh -c '
+        chown -R root:gpio /sys/class/gpio && chmod -R 770 /sys/class/gpio;\
+        chown -R root:gpio /sys$DEVPATH && chmod -R 770 /sys$DEVPATH\
+'\"" > /etc/udev/rules.d/99-gpio.rules
 
 echo "Cleaning APT Cache and remove policy file"
 rm -f /var/lib/apt/lists/*archive*
@@ -85,3 +84,9 @@ touch /boot/resize-volumio-datapart
 
 echo "Creating initramfs 'volumio.initrd'"
 mkinitramfs-custom.sh -o /tmp/initramfs-tmp
+
+echo "Creating uInitrd from 'volumio.initrd'"
+mkimage -A arm -O linux -T ramdisk -C none -a 0 -e 0 -n uInitrd -d /boot/volumio.initrd /boot/uInitrd
+mkimage -A arm -T script -C none -d /boot/boot.cmd /boot/boot.scr
+echo "Cleaning up"
+# rm /boot/volumio.initrd

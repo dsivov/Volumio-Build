@@ -18,7 +18,7 @@ while getopts ":v:p:a:" opt; do
 done
 
 BUILDDATE=$(date -I)
-IMG_FILE="Volumio${VERSION}-${BUILDDATE}-${ARCH}-nanopineo2.img"
+IMG_FILE="Volumio${VERSION}-${BUILDDATE}-nanopineo2.img"
 
 if [ "$ARCH" = arm ]; then
   DISTRO="Raspbian"
@@ -70,7 +70,7 @@ else
 	echo "Clone nanopineo2 files from repo"
     sudo mkdir platform-nanopineo2
     cd platform-nanopineo2
-	wget https://github.com/nikkov/nanopineo2-platform/raw/master/nanopineo2.tar.xz
+	wget https://github.com/volumio/nanopineo2-platform/raw/master/nanopineo2.tar.xz
 	echo "Unpack the platform files"
 	tar xfJ nanopineo2.tar.xz
 	rm nanopineo2.tar.xz
@@ -138,10 +138,31 @@ mount /proc /mnt/volumio/rootfs/proc -t proc
 mount /sys /mnt/volumio/rootfs/sys -t sysfs
 echo $PATCH > /mnt/volumio/rootfs/patch
 
+if [ -f "/mnt/volumio/rootfs/$PATCH/patch.sh" ] && [ -f "config.js" ]; then
+        if [ -f "UIVARIANT" ] && [ -f "variant.js" ]; then
+                UIVARIANT=$(cat "UIVARIANT")
+                echo "Configuring variant $UIVARIANT"
+                echo "Starting config.js for variant $UIVARIANT"
+                node config.js $PATCH $UIVARIANT
+                echo $UIVARIANT > /mnt/volumio/rootfs/UIVARIANT
+        else
+                echo "Starting config.js"
+                node config.js $PATCH
+        fi
+fi
+
 chroot /mnt/volumio/rootfs /bin/bash -x <<'EOF'
 su -
 /nanopineo2config.sh
 EOF
+
+UIVARIANT_FILE=/mnt/volumio/rootfs/UIVARIANT
+if [ -f "${UIVARIANT_FILE}" ]; then
+    echo "Starting variant.js"
+    node variant.js
+    rm $UIVARIANT_FILE
+fi
+
 
 #cleanup
 rm /mnt/volumio/rootfs/nanopineo2config.sh /mnt/volumio/rootfs/root/init
@@ -158,6 +179,9 @@ echo "==> nanopineo2 device installed"
 #sudo rm -r platform-nanopineo2
 sync
 
+echo "Finalizing Rootfs creation"
+sh scripts/finalize.sh
+
 echo "Preparing rootfs base for SquashFS"
 
 if [ -d /mnt/squash ]; then
@@ -171,13 +195,13 @@ fi
 echo "Copying Volumio rootfs to Temp Dir"
 cp -rp /mnt/volumio/rootfs/* /mnt/squash/
 
-if [ -e /mnt/kernel_current.tar.gz ]; then
+if [ -e /mnt/kernel_current.tar ]; then
 	echo "Volumio Kernel Partition Archive exists - Cleaning it"
-	rm -rf /mnt/kernel_current.tar.gz
+	rm -rf /mnt/kernel_current.tar
 fi
 
 echo "Creating Kernel Partition Archive"
-tar cf /mnt/kernel_current.tar.gz --exclude='resize-volumio-datapart' -C /mnt/squash/boot/ .
+tar cf /mnt/kernel_current.tar --exclude='resize-volumio-datapart' -C /mnt/squash/boot/ .
 
 echo "Removing the Kernel"
 rm -rf /mnt/squash/boot/*
