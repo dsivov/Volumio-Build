@@ -103,11 +103,12 @@ if [ -f "/mnt/volumio/rootfs/$PATCH/patch.sh" ] && [ -f "config.js" ]; then
        		node config.js $PATCH
         fi
 fi
-
+echo "raspberry config start"
 chroot /mnt/volumio/rootfs /bin/bash -x <<'EOF'
 su -
 /raspberryconfig.sh -p
 EOF
+echo "rasp config stop"
 
 
 UIVARIANT_FILE=/mnt/volumio/rootfs/UIVARIANT

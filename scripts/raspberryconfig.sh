@@ -64,7 +64,7 @@ touch /boot/start.elf
 mkdir /lib/modules
 
 
-KERNEL_VERSION="4.14.71"
+KERNEL_VERSION="4.14.90"
 
 case $KERNEL_VERSION in
     "4.4.9")
@@ -102,6 +102,12 @@ case $KERNEL_VERSION in
       KERNEL_COMMIT="c919d632ddc2a88bcb87b7d0cddd61446d1a36bf"
       FIRMWARE_COMMIT=$KERNEL_COMMIT
       ;;
+    "4.14.90")
+      KERNEL_REV="1183"
+      KERNEL_COMMIT="da5948d8ef8354557732d9c8f5ad5e7e24374a69"
+      FIRMWARE_COMMIT=$KERNEL_COMMIT
+      ;;
+
 esac
 
 # using rpi-update relevant to defined kernel version
@@ -213,8 +219,8 @@ sed -i 's/KERNEL==\"eth/DRIVERS!=\"smsc95xx\", DRIVERS!=\"lan78xx\", &/' /etc/ud
 
 echo "Installing Wireless drivers for 8188eu, 8192eu, 8812au, mt7610, and mt7612. Many thanks MrEngman"
 ### We cache the drivers archives upon first request on Volumio server, to relieve stress on mr engmans
-MRENGMAN_REPO="http://wifi-drivers.volumio.org/wifi-drivers"
-#MRENGMAN_REPO="http://downloads.fars-robotics.net/wifi-drivers"
+#MRENGMAN_REPO="http://wifi-drivers.volumio.org/wifi-drivers"
+MRENGMAN_REPO="http://downloads.fars-robotics.net/wifi-drivers"
 mkdir wifi
 cd wifi
 
