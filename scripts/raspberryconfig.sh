@@ -168,6 +168,7 @@ max_usb_current=1
 dtparam=audio=on
 audio_pwm_mode=2
 dtparam=i2c_arm=on
+dtparam=i2c_arm_baudrate=400000
 disable_splash=1
 hdmi_force_hotplug=1" >> /boot/config.txt
 
