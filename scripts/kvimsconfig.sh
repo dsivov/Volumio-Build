@@ -10,7 +10,7 @@ echo "Creating \"fstab\""
 echo "# Amlogic fstab" > /etc/fstab
 echo "" >> /etc/fstab
 echo "proc            /proc           proc    defaults        0       0
-LABEL=BOOT /boot           vfat    defaults,utf8,user,rw,umask=111,dmask=000        0       1
+UUID=${UUID_BOOT} /boot           vfat    defaults,utf8,user,rw,umask=111,dmask=000        0       1
 tmpfs   /var/log                tmpfs   size=20M,nodev,uid=1000,mode=0777,gid=4, 0 0
 tmpfs   /var/spool/cups         tmpfs   defaults,noatime,mode=0755 0 0
 tmpfs   /var/spool/cups/tmp     tmpfs   defaults,noatime,mode=0755 0 0
@@ -18,20 +18,44 @@ tmpfs   /tmp                    tmpfs   defaults,noatime,mode=0755 0 0
 tmpfs   /dev/shm                tmpfs   defaults,nosuid,noexec,nodev        0 0
 " > /etc/fstab
 
-echo "#!/bin/sh -e
-/etc/hdmi.sh &
-/etc/fan.sh &
-exit 0" > /etc/rc.local
+sed -i "s/#imgpart=UUID=/imgpart=UUID=${UUID_IMG}/g" /boot/env.system.txt
+sed -i "s/#bootpart=UUID=/bootpart=UUID=${UUID_BOOT}/g" /boot/env.system.txt
+sed -i "s/#datapart=UUID=/datapart=UUID=${UUID_DATA}/g" /boot/env.system.txt
 
-echo "Adding default sound modules and wifi"
+echo "Fixing armv8 deprecated instruction emulation with armv7 rootfs"
+echo "abi.cp15_barrier=2" >> /etc/sysctl.conf
+echo "Remove default dmesg restriction"
+echo "kernel.dmesg_restrict = 0" >> /etc/sysctl.conf
+
+echo "Adding default wifi"
 echo "dhd
-snd_soc_pcm5102
-snd_soc_odroid_dac
 " >> /etc/modules
 
-echo "Installing additonal packages"
+echo "USB Card Ordering"
+echo "
+# USB DACs will have device number 5 in whole Volumio device range
+options snd-usb-audio index=5" >> /etc/modprobe.d/alsa-base.conf
+
+echo "Installing additional packages"
 apt-get update
-apt-get -y install u-boot-tools liblircclient0 lirc mc abootimg fbset
+apt-get -y install u-boot-tools mc abootimg fbset bluez-firmware bluetooth bluez bluez-tools device-tree-compiler linux-base
+
+echo "Enabling KVIM Bluetooth stack"
+ln -sf /lib/firmware /etc/firmware
+ln -s /lib/systemd/system/bluetooth-khadas.service /etc/systemd/system/multi-user.target.wants/bluetooth-khadas.service
+if [ ! "$MODEL" = kvim1 ]; then
+	ln -s /lib/systemd/system/fan.service /etc/systemd/system/multi-user.target.wants/fan.service
+fi
+
+echo "Configuring boot splash"
+apt-get -y install plymouth plymouth-themes
+plymouth-set-default-theme volumio
+
+echo "Installing Kiosk"
+sh /install-kiosk.sh
+
+echo "Kiosk installed"
+rm /install-kiosk.sh
 
 echo "Cleaning APT Cache and remove policy file"
 rm -f /var/lib/apt/lists/*archive*
@@ -68,9 +92,8 @@ rm -rf ${PATCH}
 fi
 rm /patch
 
-#echo "Changing to 'modules=dep'"
-#echo "(otherwise won't boot due to uInitrd 4MB limit)"
-#sed -i "s/MODULES=most/MODULES=dep/g" /etc/initramfs-tools/initramfs.conf
+#echo "Changing to 'modules=list' to reduce the size of uInitrd"
+sed -i "s/MODULES=most/MODULES=list/g" /etc/initramfs-tools/initramfs.conf
 
 echo "Installing winbind here, since it freezes networking"
 apt-get update
@@ -90,9 +113,6 @@ mkinitramfs-custom.sh -o /tmp/initramfs-tmp
 
 echo "Creating uInitrd from 'volumio.initrd'"
 mkimage -A arm64 -O linux -T ramdisk -C none -a 0 -e 0 -n uInitrd -d /boot/volumio.initrd /boot/uInitrd
-
-echo "Creating s905_autoscript"
-mkimage -A arm -O linux -T script -C none -d /boot/s905_autoscript.cmd /boot/s905_autoscript
 
 echo "Removing unnecessary /boot files"
 rm /boot/volumio.initrd

@@ -62,7 +62,7 @@ echo ""
 #Adding Main user Volumio
 echo "Adding Volumio User"
 groupadd volumio
-useradd -c volumio -d /home/volumio -m -g volumio -G adm,dialout,cdrom,floppy,audio,dip,video,plugdev,netdev,lp -s /bin/bash -p '$6$tRtTtICB$Ki6z.DGyFRopSDJmLUcf3o2P2K8vr5QxRx5yk3lorDrWUhH64GKotIeYSNKefcniSVNcGHlFxZOqLM6xiDa.M.' volumio
+useradd -c volumio -d /home/volumio -m -g volumio -G adm,dialout,cdrom,floppy,audio,dip,video,plugdev,netdev,lp,systemd-journal -s /bin/bash -p '$6$tRtTtICB$Ki6z.DGyFRopSDJmLUcf3o2P2K8vr5QxRx5yk3lorDrWUhH64GKotIeYSNKefcniSVNcGHlFxZOqLM6xiDa.M.' volumio
 
 #Setting Root Password
 echo 'root:$1$JVNbxLRo$pNn5AmZxwRtWZ.xF.8xUq/' | chpasswd -e
@@ -120,7 +120,7 @@ echo 'Adding Safe Sudoers NoPassw permissions'
 cat > ${SUDOERS_FILE} << EOF
 # Add permissions for volumio user
 volumio ALL=(ALL) ALL
-volumio ALL=(ALL) NOPASSWD: /sbin/poweroff,/sbin/shutdown,/sbin/reboot,/sbin/halt,/bin/systemctl,/usr/bin/apt-get,/usr/sbin/update-rc.d,/usr/bin/gpio,/bin/mount,/bin/umount,/sbin/iwconfig,/sbin/iwlist,/sbin/ifconfig,/usr/bin/killall,/bin/ip,/usr/sbin/service,/etc/init.d/netplug,/bin/journalctl,/bin/chmod,/sbin/ethtool,/usr/sbin/alsactl,/bin/tar,/usr/bin/dtoverlay,/sbin/dhclient,/usr/sbin/i2cdetect,/sbin/dhcpcd,/usr/bin/alsactl,/bin/mv,/sbin/iw,/bin/hostname,/sbin/modprobe,/sbin/iwgetid,/bin/ln,/usr/bin/unlink,/bin/dd,/usr/bin/dcfldd,/opt/vc/bin/vcgencmd,/opt/vc/bin/tvservice,/usr/bin/renice,/bin/rm
+volumio ALL=(ALL) NOPASSWD: /sbin/poweroff,/sbin/shutdown,/sbin/reboot,/sbin/halt,/bin/systemctl,/usr/bin/apt-get,/usr/sbin/update-rc.d,/usr/bin/gpio,/bin/mount,/bin/umount,/sbin/iwconfig,/sbin/iwlist,/sbin/ifconfig,/usr/bin/killall,/bin/ip,/usr/sbin/service,/etc/init.d/netplug,/bin/journalctl,/bin/chmod,/sbin/ethtool,/usr/sbin/alsactl,/bin/tar,/usr/bin/dtoverlay,/sbin/dhclient,/usr/sbin/i2cdetect,/sbin/dhcpcd,/usr/bin/alsactl,/bin/mv,/sbin/iw,/bin/hostname,/sbin/modprobe,/sbin/iwgetid,/bin/ln,/usr/bin/unlink,/bin/dd,/usr/bin/dcfldd,/opt/vc/bin/vcgencmd,/opt/vc/bin/tvservice,/usr/bin/renice,/bin/rm,/bin/kill
 volumio ALL=(ALL) NOPASSWD: /bin/sh /volumio/app/plugins/system_controller/volumio_command_line_client/commands/kernelsource.sh, /bin/sh /volumio/app/plugins/system_controller/volumio_command_line_client/commands/pull.sh
 EOF
 chmod 0440 ${SUDOERS_FILE}
@@ -197,10 +197,10 @@ if [ $(uname -m) = armv7l ] || [ $(uname -m) = aarch64 ]; then
      rm libasound2_1.1.3-5_armhf.deb
      rm libasound2-dev_1.1.3-5_armhf.deb
 
-     echo "Installing MPD 20.6 with Direct DSD Support"
-     wget http://repo.volumio.org/Volumio2/Binaries/mpd-DSD/mpd_0.20.6-1_armv6-DSD-2.deb
-     dpkg -i mpd_0.20.6-1_armv6-DSD-2.deb
-     rm mpd_0.20.6-1_armv6-DSD-2.deb
+     echo "Installing MPD 20.18"
+     wget http://repo.volumio.org/Volumio2/Binaries/mpd-DSD/mpd_0.20.18-1_armv6.deb
+     dpkg -i mpd_0.20.18-1_armv6.deb
+     rm mpd_0.20.18-1_armv6.deb
 
      echo "Installing Upmpdcli for armv6"
      wget http://repo.volumio.org/Volumio2/Binaries/upmpdcli/armv6/libupnpp3_0.15.1-1_armhf.deb
@@ -234,10 +234,10 @@ if [ $(uname -m) = armv7l ] || [ $(uname -m) = aarch64 ]; then
      rm libasound2_1.1.3-5_armhf.deb
      rm libasound2-dev_1.1.3-5_armhf.deb
 
-     echo "Installing MPD 20.6 with Direct DSD Support"
-     wget http://repo.volumio.org/Volumio2/Binaries/mpd-DSD/mpd_0.20.6-1_armv7-DSD.deb
-     dpkg -i mpd_0.20.6-1_armv7-DSD.deb
-     rm mpd_0.20.6-1_armv7-DSD.deb
+     echo "Installing MPD 20.18"
+     wget http://repo.volumio.org/Volumio2/Binaries/mpd-DSD/mpd_0.20.18-1_armv7.deb
+     dpkg -i mpd_0.20.18-1_armv7.deb
+     rm mpd_0.20.18-1_armv7.deb
 
     echo "Installing Upmpdcli for armv7"
     wget http://repo.volumio.org/Volumio2/Binaries/upmpdcli/armv7/libupnpp3_0.15.1-1_armhf.deb
@@ -259,28 +259,27 @@ if [ $(uname -m) = armv7l ] || [ $(uname -m) = aarch64 ]; then
   #Remove autostart of upmpdcli
   update-rc.d upmpdcli remove
 
-
   echo "Installing Shairport-Sync"
+  wget http://repo.volumio.org/Volumio2/Binaries/shairport-sync_3.3.6-arm.deb
+  dpkg -i shairport-sync_3.3.6-arm.deb
+  rm shairport-sync_3.3.6-arm.deb
+
+  echo "Installing Shairport-Sync Metadata Reader"
   wget http://repo.volumio.org/Volumio2/Binaries/shairport-sync-metadata-reader-arm.tar.gz
   tar xf shairport-sync-metadata-reader-arm.tar.gz
   rm /shairport-sync-metadata-reader-arm.tar.gz
 
-  echo "Installing Shairport-Sync Metadata Reader"
-  wget http://repo.volumio.org/Volumio2/Binaries/shairport-sync-3.0.2-arm.tar.gz
-  tar xf shairport-sync-3.0.2-arm.tar.gz
-  rm /shairport-sync-3.0.2-arm.tar.gz
-
   echo "Volumio Init Updater"
   wget http://repo.volumio.org/Volumio2/Binaries/arm/volumio-init-updater-v2 -O /usr/local/sbin/volumio-init-updater
   chmod a+x /usr/local/sbin/volumio-init-updater
-  echo "Installing Snapcast for multiroom"
 
+  echo "Installing Snapcast for multiroom"
   wget http://repo.volumio.org/Volumio2/Binaries/arm/snapserver -P /usr/sbin/
   wget http://repo.volumio.org/Volumio2/Binaries/arm/snapclient -P  /usr/sbin/
   chmod a+x /usr/sbin/snapserver
   chmod a+x /usr/sbin/snapclient
 
-  echo "Zsync"
+  echo "Installing Zsync"
   rm /usr/bin/zsync
   wget http://repo.volumio.org/Volumio2/Binaries/arm/zsync -P /usr/bin/
   chmod a+x /usr/bin/zsync
@@ -288,6 +287,10 @@ if [ $(uname -m) = armv7l ] || [ $(uname -m) = aarch64 ]; then
   echo "Adding special version for edimax dongle"
   wget http://repo.volumio.org/Volumio2/Binaries/arm/hostapd-edimax -P /usr/sbin/
   chmod a+x /usr/sbin/hostapd-edimax
+
+  echo "Adding special version for kernel 4.19"
+  wget http://repo.volumio.org/Volumio2/Binaries/arm/hostapd-2.8 -P /usr/sbin/
+  chmod a+x /usr/sbin/hostapd-2.8
 
   echo "interface=wlan0
 ssid=Volumio
@@ -299,19 +302,19 @@ wpa=2
 wpa_key_mgmt=WPA-PSK
 rsn_pairwise=CCMP
 wpa_passphrase=volumio2" >> /etc/hostapd/hostapd-edimax.conf
-  chmod -R 777 /etc/hostapd-edimax.conf
+  chmod -R 777 /etc/hostapd/hostapd-edimax.conf
 
   echo "Cleanup"
   apt-get clean
   rm -rf tmp/*
 elif [ $(uname -m) = i686 ] || [ $(uname -m) = x86 ] || [ $(uname -m) = x86_64 ]  ; then
-  echo 'X86 Environment Detected'
+  echo 'x86 Environment Detected'
 
   # cleanup
   apt-get clean
   rm -rf tmp/*
 
-  echo "Installing X86 Node Environment"
+  echo "Installing x86 Node Environment"
   cd /
   wget http://repo.volumio.org/Volumio2/node-v${NODE_VERSION}-linux-x86.tar.xz
   tar xf node-v${NODE_VERSION}-linux-x86.tar.xz
@@ -348,7 +351,7 @@ elif [ $(uname -m) = i686 ] || [ $(uname -m) = x86 ] || [ $(uname -m) = x86_64 ]
 
   echo "Installing MPD for i386"
   # First we manually install a newer alsa-lib to achieve Direct DSD support
-  
+
   echo "Installing alsa-lib 1.1.3"
   wget http://repo.volumio.org/Volumio2/Binaries/libasound2/i386/libasound2_1.1.3-5_i386.deb
   wget http://repo.volumio.org/Volumio2/Binaries/libasound2/i386/libasound2-data_1.1.3-5_all.deb
@@ -358,12 +361,12 @@ elif [ $(uname -m) = i686 ] || [ $(uname -m) = x86 ] || [ $(uname -m) = x86_64 ]
   dpkg --force-all -i libasound2-dev_1.1.3-5_i386.deb
   rm libasound2-data_1.1.3-5_all.deb
   rm libasound2_1.1.3-5_i386.deb
-  rm libasound2-dev_1.1.3-5_i386.deb 
+  rm libasound2-dev_1.1.3-5_i386.deb
 
-  echo "Installing MPD 20.6 with Direct DSD Support"
-  wget http://repo.volumio.org/Volumio2/Binaries/mpd-DSD/mpd_0.20.6-1_i386-DSD-2.deb
-  dpkg -i mpd_0.20.6-1_i386-DSD-2.deb
-  rm mpd_0.20.6-1_i386-DSD-2.deb
+  echo "Installing MPD 20.18"
+  wget http://repo.volumio.org/Volumio2/Binaries/mpd-DSD/mpd_0.20.18-1_i386.deb
+  dpkg -i mpd_0.20.18-1_i386.deb
+  rm mpd_0.20.18-1_i386.deb
 
   echo "Installing Upmpdcli"
   wget http://repo.volumio.org/Packages/Upmpdcli/x86/upmpdcli_1.2.12-1_i386.deb
@@ -377,15 +380,15 @@ elif [ $(uname -m) = i686 ] || [ $(uname -m) = x86 ] || [ $(uname -m) = x86_64 ]
   rm /libupnp6_1.6.20.jfd5-1_i386.deb
 
   echo "Installing Shairport-Sync"
-  wget http://repo.volumio.org/Volumio2/Binaries/shairport-sync-3.0.2-i386.tar.gz
-  tar xf shairport-sync-3.0.2-i386.tar.gz
-  rm /shairport-sync-3.0.2-i386.tar.gz
-  
+  wget http://repo.volumio.org/Volumio2/Binaries/shairport-sync_3.3.6-i386.deb
+  dpkg -i shairport-sync_3.3.6-i386.deb
+  rm shairport-sync_3.3.6-i386.deb
+
   echo "Installing Shairport-Sync Metadata Reader"
   wget http://repo.volumio.org/Volumio2/Binaries/shairport-sync-metadata-reader-i386.tar.gz
   tar xf shairport-sync-metadata-reader-i386.tar.gz
   rm /shairport-sync-metadata-reader-i386.tar.gz
-  
+
 
   echo "Installing LINN Songcast module"
   wget http://repo.volumio.org/Packages/Upmpdcli/x86/sc2mpd_1.1.1-1_i386.deb
@@ -396,7 +399,7 @@ elif [ $(uname -m) = i686 ] || [ $(uname -m) = x86 ] || [ $(uname -m) = x86_64 ]
   wget http://repo.volumio.org/Volumio2/Binaries/x86/volumio-init-updater-v2 -O /usr/local/sbin/volumio-init-updater
   chmod a+x /usr/local/sbin/volumio-init-updater
 
-  echo "Zsync"
+  echo "Installing Zsync"
   rm /usr/bin/zsync
   wget http://repo.volumio.org/Volumio2/Binaries/x86/zsync -P /usr/bin/
   chmod a+x /usr/bin/zsync
@@ -409,10 +412,13 @@ elif [ $(uname -m) = i686 ] || [ $(uname -m) = x86 ] || [ $(uname -m) = x86_64 ]
 
 fi
 
+echo "Setting proper permissions for ping"
+chmod u+s /bin/ping
+
 echo "Creating Volumio Folder Structure"
 # Media Mount Folders
-mkdir /mnt/NAS
-mkdir /media
+mkdir -p /mnt/NAS
+mkdir -p /media
 ln -s /media /mnt/USB
 
 #Internal Storage Folder
@@ -474,6 +480,9 @@ systemctl disable ssh.service
 echo "Enable Volumio SSH enabler"
 ln -s /lib/systemd/system/volumiossh.service /etc/systemd/system/multi-user.target.wants/volumiossh.service
 
+echo "Enable Volumio Log Rotation Service"
+ln -s /lib/systemd/system/volumiologrotate.service /etc/systemd/system/multi-user.target.wants/volumiologrotate.service
+
 echo "Setting Mpd to SystemD instead of Init"
 update-rc.d mpd remove
 systemctl enable mpd.service
@@ -489,6 +498,13 @@ systemctl disable dhcpd.service
 echo "Linking Volumio Command Line Client"
 ln -s /volumio/app/plugins/system_controller/volumio_command_line_client/volumio.sh /usr/local/bin/volumio
 chmod a+x /usr/local/bin/volumio
+
+echo "Adding Shairport-Sync User"
+getent group shairport-sync &>/dev/null || groupadd -r shairport-sync >/dev/null
+getent passwd shairport-sync &> /dev/null || useradd -r -M -g shairport-sync -s /usr/bin/nologin -G audio shairport-sync >/dev/null
+
+echo "Semistandard"
+ln -s /volumio/node_modules/semistandard/bin/cmd.js /bin/semistandard
 
 #####################
 #Audio Optimizations#-----------------------------------------

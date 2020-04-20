@@ -13,6 +13,9 @@ BOLD=$(tput bold)
 REV=$(tput smso)
 
 ARCH=none
+
+PACKAGES="git squashfs-tools kpartx multistrap qemu-user-static samba debootstrap parted dosfstools qemu binfmt-support qemu-utils docker.io md5deep"
+
 #Help function
 function HELP {
   echo "
@@ -39,6 +42,18 @@ Example: Build a Raspberry PI image from scratch, version 2.0 :
          ./build.sh -b arm -d pi -v 2.0 -l reponame
 "
   exit 1
+}
+
+# Auto check and install prerequisite packages
+function check_sysreq {
+  echo "Auto check and install prerequisite packages"
+  REQ_STATE=$(dpkg -l $PACKAGES | grep "un  ")
+  if [ -n "$REQ_STATE" ]; then
+    echo "Start installing packages."
+    apt update
+    apt -y install $PACKAGES
+  fi
+  echo "Build continues."
 }
 
 #$1 = ${BUILD} $2 = ${VERSION} $3 = ${DEVICE}"
@@ -110,6 +125,7 @@ if [ -z "${VARIANT}" ]; then
 fi
 
 if [ -n "$BUILD" ]; then
+  check_sysreq
   CONF="recipes/$BUILD.conf"
   if [ "$BUILD" = arm ] || [ "$BUILD" = arm-dev ]; then
     ARCH="armhf"
@@ -162,8 +178,16 @@ if [ -n "$BUILD" ]; then
   else 
   git clone --depth 1 -b master --single-branch https://github.com/dsivov/Volumio2.git build/$BUILD/root/volumio
   fi
+  echo "Pre-commit hooks"
+  echo '#!/bin/sh
+  # Pre-commit hook, uncomment when finished linting all codebase
+  #npm run lint-staged' > /volumio/.git/hooks/pre-commit
   echo 'Cloning Volumio UI'
   git clone --depth 1 -b dist --single-branch https://github.com/volumio/Volumio2-UI.git "build/$BUILD/root/volumio/http/www"
+  echo 'Cloning Volumio3 UI'
+  git clone --depth 1 -b dist3 --single-branch https://github.com/volumio/Volumio2-UI.git "build/$BUILD/root/volumio/http/www3"
+  rm -rf build/$BUILD/root/volumio/http/www/.git
+  rm -rf build/$BUILD/root/volumio/http/www3/.git
   echo "Adding os-release infos"
   {
     echo "VOLUMIO_BUILD_VERSION=\"$(git rev-parse HEAD)\""
@@ -171,8 +195,8 @@ if [ -n "$BUILD" ]; then
     echo "VOLUMIO_BE_VERSION=\"$(git --git-dir "build/$BUILD/root/volumio/.git" rev-parse HEAD)\""
     echo "VOLUMIO_ARCH=\"${BUILD}\""
   } >> "build/$BUILD/root/etc/os-release"
-  rm -rf build/$BUILD/root/volumio/http/www/.git
-  echo "root:x:0:0:root:/root:/bin/bash" > build/$BUILD/root/etc/passwd
+  #rm -rf build/$BUILD/root/volumio/http/www/.git
+  #echo "root:x:0:0:root:/root:/bin/bash" > build/$BUILD/root/etc/passwd
   if [ ! "$BUILD" = x86 ]; then
     chroot "build/$BUILD/root" /bin/bash -x <<'EOF'
 su - root
@@ -227,8 +251,11 @@ case "$DEVICE" in
     ;;
   odroidc2) echo 'Writing Odroid-C2 Image File'
     check_os_release "armv7" "$VERSION" "$DEVICE"
-# this will be changed to armv8 once the volumio packges have been re-compiled for aarch64
     sh scripts/odroidc2image.sh -v "$VERSION" -p "$PATCH" -a armv7
+    ;;
+  odroidn2) echo 'Writing Odroid-N2 Image File'
+    check_os_release "armv7" "$VERSION" "$DEVICE"
+    sh scripts/odroidn2image.sh -v "$VERSION" -p "$PATCH" -a armv7
     ;;
   odroidxu4) echo 'Writing Odroid-XU4 Image File'
     check_os_release "armv7" "$VERSION" "$DEVICE"
@@ -280,6 +307,10 @@ case "$DEVICE" in
     check_os_release "armv7" "$VERSION" "$DEVICE"
     sh scripts/tinkerimage.sh -v "$VERSION" -p "$PATCH" -a armv7
     ;;
+  primo) echo 'Writing Volumio Primo Image File'
+    check_os_release "armv7" "$VERSION" "$DEVICE"
+    sh scripts/primoimage.sh -v "$VERSION" -p "$PATCH" -a armv7
+    ;;
   sopine64) echo 'Writing Sopine64 Image File'
     check_os_release "armv7" "$VERSION" "$DEVICE"
     sh scripts/sopine64image.sh -v "$VERSION" -p "$PATCH" -a armv7
@@ -319,6 +350,27 @@ case "$DEVICE" in
   nanopineo) echo 'Writing NanoPi-NEO (Air) Image File'
     check_os_release "armv7" "$VERSION" "$DEVICE"
     sh scripts/nanopineoimage.sh -v "$VERSION" -p "$PATCH" -a armv7
+    ;;
+  motivo) echo 'Writing Motivo Image File'
+    check_os_release "armv7" "$VERSION" "$DEVICE"
+    sh scripts/motivoimage.sh -v "$VERSION" -p "$PATCH" -a armv7
+    ;;
+  primo) echo 'Writing Primo Image File'
+    check_os_release "armv7" "$VERSION" "$DEVICE"
+    sh scripts/primoimage.sh -v "$VERSION" -p "$PATCH" -a armv7
+    ;;
+  vim1) echo 'Writing VIM1 Image File'
+    check_os_release "armv7" "$VERSION" "$DEVICE"
+    sh scripts/vim1image.sh -v "$VERSION" -p "$PATCH" -a armv7
+    ;;
+  hemx8mmini) echo 'Writing hemx8mmini Image File'
+    check_os_release "armv7" "$VERSION" "$DEVICE"
+    sh scripts/hemx8mminiimage.sh -v "$VERSION" -p "$PATCH" -a armv7
+    ;;
+  kvim1|kvim2|kvim3|kvim3l) echo 'Writing VIM1 Image File'
+    check_os_release "armv7" "$VERSION" "$DEVICE"
+    sh scripts/kvimsimage.sh -v "$VERSION" -p "$PATCH" -a armv7 -m ${DEVICE}
+
     ;;
 esac
 

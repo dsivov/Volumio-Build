@@ -140,6 +140,13 @@ su -
 /vszeroconfig.sh
 EOF
 
+UIVARIANT_FILE=/mnt/volumio/rootfs/UIVARIANT
+if [ -f "${UIVARIANT_FILE}" ]; then
+    echo "Starting variant.js"
+    node variant.js
+    rm $UIVARIANT_FILE
+fi
+
 #cleanup
 rm /mnt/volumio/rootfs/root/init /mnt/volumio/rootfs/vszeroconfig.sh
 
@@ -197,3 +204,5 @@ umount -l /mnt/volumio/rootfs/boot
 dmsetup remove_all
 losetup -d ${LOOP_DEV}
 sync
+
+md5sum "$IMG_FILE" > "${IMG_FILE}.md5"

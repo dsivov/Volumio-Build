@@ -180,3 +180,5 @@ sudo umount -l /mnt/volumio/rootfs/boot
 
 dmsetup remove_all
 sudo losetup -d ${LOOP_DEV}
+
+md5sum "$IMG_FILE" > "${IMG_FILE}.md5"
