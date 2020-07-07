@@ -187,6 +187,20 @@ fi
 echo "Installing WiringPi from Raspberrypi.org Repo"
 apt-get -y install wiringpi
 
+echo "Installing LCD OLED libraries"
+apt-get update
+apt-get install i2c-tools
+apt-get install libi2c-dev
+apt-get install libmpdclient-dev
+wget https://github.com/dsivov/DDPlayerDrivers/raw/master/mpd_oled
+wget https://github.com/dsivov/DDPlayerDrivers/raw/master/install.sh
+wget https://github.com/dsivov/DDPlayerDrivers/raw/master/mpd_oled.service
+chmod +x mpd_oled
+sh install.sh
+rm install.sh
+rm mpd_oled
+rm mpd_oled.service
+
 echo "Configuring boot splash"
 apt-get -y install plymouth plymouth-themes
 plymouth-set-default-theme volumio
@@ -340,11 +354,13 @@ rm ess-volumio-$KERNEL_VERSION-v7+.tar.gz
 
 
 echo "Getting DDPLAYER Modules and overlay"
-wget https://github.com/dsivov/DDPlayerDrivers/raw/master/ddplayer-driver.tar.gz 
+#wget https://github.com/dsivov/DDPlayerDrivers/raw/master/ddplayer-driver.tar.gz 
+#R4 drivers
+wget https://github.com/dsivov/DDPlayerDrivers/raw/master/ddplayer-driver-r4.tar.gz 
 echo "Extracting DDPLAYER Modules and overlay"
-tar --strip-components 1 --exclude *.hash -xf ddplayer-driver.tar.gz
+tar --strip-components 1 --exclude *.hash -xf ddplayer-driver-r4.tar.gz --no-same-owner
 
-rm ddplayer-driver.tar.gz
+rm ddplayer-driver-r4.tar.gz
 echo "DDPLAYER Modules and overlay installed"
 
 
