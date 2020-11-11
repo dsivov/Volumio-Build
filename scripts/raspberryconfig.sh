@@ -192,11 +192,14 @@ apt-get update
 apt-get install i2c-tools
 apt-get install libi2c-dev
 apt-get install libmpdclient-dev
+apt-get install libcurl4-gnutls-dev
+apt-get install libjsoncpp-dev
 wget https://github.com/dsivov/DDPlayerDrivers/raw/master/mpd_oled
 wget https://github.com/dsivov/DDPlayerDrivers/raw/master/install.sh
 wget https://github.com/dsivov/DDPlayerDrivers/raw/master/mpd_oled.service
 chmod +x mpd_oled
 sh install.sh
+cp /usr/share/zoneinfo/Israel /etc/localtime
 rm install.sh
 rm mpd_oled
 rm mpd_oled.service
